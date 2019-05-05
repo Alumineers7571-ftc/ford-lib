@@ -4,7 +4,7 @@ public class Position{
 
     private Point current, target;
 
-    double x, y;
+    double x, y, rot;
 
     public Position(Point current){
 
@@ -16,6 +16,18 @@ public class Position{
     public Position(Point current, Point target){
         this.current = current;
         this.target = target;
+    }
+
+    public double getX(){
+        return x;
+    }
+
+    public double getY(){
+        return y;
+    }
+
+    public double getRot(){
+        return rot;
     }
 
     public Point getCurrent(){
