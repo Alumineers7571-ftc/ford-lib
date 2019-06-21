@@ -1,26 +1,44 @@
 package org.firstinspires.ftc.teamcode.lib.hardware.base;
 
+
+import com.qualcomm.robotcore.eventloop.opmode.OpMode;
+import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.Gamepad;
 
-import org.firstinspires.ftc.teamcode.lib.coordinates.*;
-import org.firstinspires.ftc.teamcode.lib.util.Math7571;
+import org.firstinspires.ftc.teamcode.lib.movement.MyPosition;
+import org.firstinspires.ftc.teamcode.lib.movement.Position;
+import org.firstinspires.ftc.teamcode.lib.util.OpMode7571;
 import org.firstinspires.ftc.teamcode.lib.util.PIDController;
+import org.openftc.revextensions2.ExpansionHubEx;
+import org.openftc.revextensions2.ExpansionHubMotor;
+import org.openftc.revextensions2.RevBulkData;
+import org.openftc.revextensions2.RevExtensions2;
 
-public class Robot{
+import static org.firstinspires.ftc.teamcode.lib.movement.MyPosition.worldAngle_rad;
+import static org.firstinspires.ftc.teamcode.lib.movement.MyPosition.worldXPosition;
+import static org.firstinspires.ftc.teamcode.lib.movement.MyPosition.worldYPosition;
 
-  private DcMotor fl, fr, bl, br;
+@TeleOp
+public class Robot extends OpMode{
+
   private PIDController pidRotate, pidDrive;
 
-  private int[] pose = {0,0,0};
+  private boolean isAuto = false;
+
+  private RevBulkData revExpansionMasterBulkData;
+
+  private ExpansionHubEx revMaster;
+  private ExpansionHubEx revSlave;
+
+  private Gamepad mainGp, auxGp;
 
   public Position position;
 
-  public Robot(){
+  private RevMotor[] motors;
 
-    initDT();
-    initPID();
 
-  }
+  DriveTrain dt = new DriveTrain();
 
   private void initPID(){
 
@@ -32,59 +50,88 @@ public class Robot{
 
   }
 
-  private void initDT(){
+
+  @Override
+  public void init() {
+
+    RevExtensions2.init();
+
+    revMaster = hardwareMap.get(ExpansionHubEx.class,"Expansion Hub 2");
+    revSlave = hardwareMap.get(ExpansionHubEx.class,"Expansion Hub 5");
+
+    motors = new RevMotor[]{new RevMotor((ExpansionHubMotor) hardwareMap.get("fl"),true), new RevMotor((ExpansionHubMotor) hardwareMap.get("fr"),true), new RevMotor((ExpansionHubMotor) hardwareMap.get("bl"),true), new RevMotor((ExpansionHubMotor) hardwareMap.get("br"),true)};
+
+
+    dt.initMotors(motors);
+    initPID();
 
   }
 
-  public void driveByPower(double power){
-    
-    fl.setPower(power);
-    fr.setPower(power);
-    bl.setPower(power);
-    br.setPower(power);
+  @Override
+  public void loop() {
+
+    getRevBulkData();
+
+    telemetry.addLine("got bulk data!");
+
+    if(!isAuto){
+      getGamepads(gamepad1, gamepad2);
+      telemetry.addLine("got gamepads!");
+    }
+
+
+    dt.applyMovement();
+    telemetry.addLine("movements applied!");
+
+    MyPosition.giveMePositions(
+        dt.fr.getCurrentPosition(),
+        dt.fl.getCurrentPosition(),
+        dt.bl.getCurrentPosition());
+
+    telemetry.addLine("positions set!");
+
+    telemetry.addLine("wx: " + worldXPosition);
+    telemetry.addLine("wy: " + worldYPosition);
+    telemetry.addLine("wa: " + worldAngle_rad);
+
+    telemetry.update();
+
 
   }
 
-  public void driveInches(double distance){
-    System.out.println("distance: " + distance);
-  }
+  public void getGamepads(Gamepad main, Gamepad aux){
 
-  public void drivePID(double distance){
-
-  }
-
-  public void turnGyro(double targetHeading){
+    this.mainGp = main;
+    this.auxGp = aux;
 
   }
 
-  public void movePos(Position pos){
+  /**
+   * Gets all the data from the expansion hub in one command to increase loop times
+   */
+  public void getRevBulkData() {
+//        boolean needToPollMaster = !AutoFeeder.canPollMasterAtLowerRate ||
+//            currTimeMillis-lastUpdateMasterTime > 300;
+//        if(needToPollMaster){
+    RevBulkData newDataMaster;
+    try{
+      newDataMaster = revMaster.getBulkInputData();
+      if(newDataMaster != null){
+        revExpansionMasterBulkData = newDataMaster;
+      }
+    }catch(Exception e){
+      //don't set anything if we get an exception
+    }
 
-    System.out.println("current: " + position.getCurrent() + " target: " + pos.getTarget());
 
-    double targetHeading = Math7571.calculateHeading(pos.getMovements(position.getCurrent(), pos.getTarget()));
-
-    turnGyro(targetHeading);//absolute radians -pi to pi(please next year start on a divisible by PI/2 angle!!!)
-    drivePID(Math7571.calcHyp(position.getCurrent(), pos.getTarget()));
-
-    System.out.println("heading: " + Math.toDegrees(targetHeading));
-
-    position.setCurrent(pos.getTarget());
-    //change this to actual? or just compare in testing and then mess with PID to close the gap?
+    for(RevMotor revMotor : motors) {
+      if (revMotor == null) {
+        continue;
+      }
+      if (revExpansionMasterBulkData != null) {
+        revMotor.setEncoderReading(revExpansionMasterBulkData.getMotorCurrentPosition(revMotor.myMotor));
+      }
+    }
 
   }
-
-  public int[] getPose(){
-
-    return pose;
-  }
-
-  public void calcPose(){
-
-  }
-
-  public void bulkRead(){
-    
-  }
-
-
 }

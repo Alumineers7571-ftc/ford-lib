@@ -1,6 +1,6 @@
 package org.firstinspires.ftc.teamcode.lib.util;
 
-import org.firstinspires.ftc.teamcode.lib.coordinates.Point;
+import org.firstinspires.ftc.teamcode.lib.movement.Point;
 
 public class Math7571{
 

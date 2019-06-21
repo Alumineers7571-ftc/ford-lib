@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.lib.coordinates;
+package org.firstinspires.ftc.teamcode.lib.movement;
 
 public class Position{
 
